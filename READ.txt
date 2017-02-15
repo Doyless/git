@@ -1,0 +1,641 @@
+HelloWorld
+
+Spring
+
+Spring 表达式
+
+Spring 提供了 Spring表达式，用于读写取Bean属性，利用Spring表达式可以将一些Bean的属性读取出来，赋值给另外的Bean属性。
+
+Spring表达式的好处是可以减低Bean属性赋值的耦合性，不需要编码只使用配置文件就可以读写Bean属性。
+
+Spring表达式的常见用途是读取Properties文件：
+
+
+
+案例：利用Spring表达式读取Properties文件的内容，注入到Bean中
+
+创建Maven项目，并且导入Spring 和 JUnit包：
+
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-webmvc</artifactId>
+    <version>3.2.8.RELEASE</version>
+</dependency>
+<dependency>
+    <groupId>junit</groupId>
+    <artifactId>junit</artifactId>
+    <version>4.12</version>
+</dependency>
+在 resource 文件夹中创建db.properties:
+
+# resource/db.properties
+driver=oracle.jdbc.OracleDriver
+url=jdbc:oracle:thin:@192.168.201.227:1521:orcl
+user=openlab
+pwd=open123
+创建Bean类 DBUtil.java：
+
+public class DBUtil implements Serializable {
+    private String driverClass;
+    private String url;
+    private String userName;
+    private String password;
+
+
+    public String getDriverClass() {
+        return driverClass;
+    }
+    public void setDriverClass(String driverClass) {
+        this.driverClass = driverClass;
+    }
+    public String getUrl() {
+        return url;
+    }
+    public void setUrl(String url) {
+        this.url = url;
+    }
+    public String getUserName() {
+        return userName;
+    }
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+    public String getPassword() {
+        return password;
+    }
+    public void setPassword(String password) {
+        this.password = password;
+    }
+    @Override
+    public String toString() {
+        return "DBUtil [driverClass=" + driverClass + ", url=" + url + ", userName=" + userName + ", password="
+                + password + "]";
+    }
+}
+创建Spring的配置文件 spring-ctx.xml:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context" 
+    xmlns:jdbc="http://www.springframework.org/schema/jdbc"  
+    xmlns:jee="http://www.springframework.org/schema/jee" 
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xmlns:aop="http://www.springframework.org/schema/aop" 
+    xmlns:mvc="http://www.springframework.org/schema/mvc"
+    xmlns:util="http://www.springframework.org/schema/util"
+    xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.2.xsd
+        http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.2.xsd
+        http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee-3.2.xsd
+        http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.2.xsd
+        http://www.springframework.org/schema/data/jpa http://www.springframework.org/schema/data/jpa/spring-jpa-1.3.xsd
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.2.xsd
+        http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd
+        http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.2.xsd">
+
+    <util:properties id="db"
+        location="classpath:db.properties"/>
+    <!-- 使用Spring表达式注入Bean属性 -->
+    <bean id="dbUtil"
+        class="spring.day03.DBUtil">
+        <!-- 从db Bean 中读取属性driver，
+        注入到 driverClass 属性中-->
+        <property name="driverClass" 
+            value="#{db.driver}"/>
+        <property name="url"
+            value="#{db.url}"/>
+        <property name="userName"
+            value="#{db.user}"/>
+        <property name="password"
+            value="#{db.pwd}"/>
+    </bean>
+
+</beans>  
+其中: #{db.user} 就是Spring表达式
+测试案例：
+
+public class TestCase {
+
+    ClassPathXmlApplicationContext ctx;
+
+    @Before
+    public void init(){
+        ctx=new ClassPathXmlApplicationContext(
+            "spring-ctx.xml");
+    }
+    @Test
+    public void testDbUtil(){
+        DBUtil bean=ctx.getBean(
+            "dbUtil", DBUtil.class);
+        System.out.println(bean); 
+    }
+
+}
+其中: @Before 标签用于初始化Spring容器。
+
+在测试结果中可以看到DBUtil的属性已经被注入了值。
+基于注解的Spring
+
+基于 XML 文件配置的Spring是Spring的经典方式， 曾经非常流行，但是问题也较多， 在软件中的Bean组件很多时候，配置文件变得非常庞大，维护和调试也变得困难。
+
+Java 5 发布以后提供了注解语法，Spring也提供了基于注解的Bean组件管理，这种管理方式可以将注解作为Java语法写在编码中，编译器可以帮助编译检查注解是否正确，这样就大大减少了排错的麻烦。 使用Bean的使用变得简单了。
+
+使用步骤：
+
+在XML配置文件中添加组件扫描
+在Bean源代码中使用注解
+在XML配置文件中添加组件扫描
+
+需要在XML文件中指定扫描的包位置，Spring安装包进行扫描，会扫描到包和其子包中的全部注解。
+
+<!-- 在Spring启动时候，自动扫描 
+spring.day03.demo 包中的所有类的注解 -->
+<context:component-scan 
+    base-package="spring.day03.demo"/>
+使用注解
+
+Spring 3 提供了丰富的注解支持，有的是Spring提供了，也有来自Java的标准注解。
+
+Bean组件注解
+
+Bean 组件注解：
+
+@Component 通用组件
+@Named 通用组件 来自Java的标准
+@Controller 控制器组件
+@Service 业务层组件
+@Repository 持久层组件
+这些注解本质是没有差别的，都用于创建Bean组件，在实际工作中根据Bean组件在软件中的分工不同，适当的选用。
+案例：
+
+package spring.day03.demo;
+
+import org.springframework.stereotype.Component;
+
+//Component: 组件
+//Spring在扫描到这个类的注解Component，
+//Spring会将DemoBean实例化为对象，Bean Id为
+// demoBean 
+@Component
+public class DemoBean {
+
+    public String toString() {
+        return "Hello World!";
+    }
+}
+注意：DemoBean 必须与spring-ctx.xml文件中的组件扫描包相呼应，声明在spring.day03.demo包中，才能正确的被Spring扫描到！！！
+测试：
+
+@Test
+public void testDemoBean(){
+    //正确
+    DemoBean bean1=ctx.getBean(
+        "demoBean", DemoBean.class);
+    System.out.println(bean1);
+
+    //错误：
+    TestBean bean2=ctx.getBean(
+        "testBean", TestBean.class);
+    System.out.println(bean2);
+
+}
+将DemoBean中的 @Component 替换为 @Named @Service @Controller @Repository 会得到相同的结果，说明这几个注解没有差别。
+如果使用@Named注解，必须导入相应的包 pom.xml：
+
+<dependency>
+    <groupId>javax.inject</groupId>
+    <artifactId>javax.inject</artifactId>
+    <version>1.0-PFD-1</version>
+</dependency>
+为Bean声明Bean ID：默认的Bean ID 是自动命名的，规则为类名首字母小写。如果希望改变这个规则，可以自行指定：
+
+/*
+ * 修改默认的Bean ID，指定为特定的ID myBean
+ * ctx.getBean("myBean", DemoBean2.class)
+ */
+@Component("myBean")
+public class DemoBean2 {
+    @Override
+    public String toString() {
+        return "DemoBean2";
+    }
+}
+测试：
+
+@Test
+public void testDemoBean2(){
+    //采用定义的BeanID
+    DemoBean2 bean = ctx.getBean(
+        "myBean", DemoBean2.class);
+    System.out.println(bean); 
+
+    DemoBean2 bean2 = ctx.getBean(
+        "myBean", DemoBean2.class);
+    System.out.println(bean2); 
+
+    System.out.println(bean==bean2); 
+
+}
+作用域注解
+
+默认情况下Spring中的Bean是单例的，任何情况下获得的相同ID的Bean是同一个对象。
+
+使用 @Scope("prototype") 注解，可以声明多例Bean组件，每次使用都会创建新Bean对象。
+
+案例：
+
+/*
+ * 默认情况下，Spring中的Bean组件，都是单例的
+ * 也就是说， 任何时候获取的Bean对象都是同一个
+ * 对象, 在增加@Scope("prototype")以后，则变成
+ * 多个实例，每次getBean都会创新实例，呵呵
+ */
+@Component
+@Scope("prototype")
+public class Wife {
+    @Override
+    public String toString() {
+        return "林丹老婆";
+    }
+}
+测试：
+
+@Test
+public void testWife(){
+    /*
+     * 在Bean类上使用@Scope("prototype")
+     * 使用，每次调用getBean都会创建新的
+     * Bean对象， 也就是Bean有多个实例
+     */
+    Wife wife1 = ctx.getBean(
+            "wife", Wife.class);
+    Wife wife2 = ctx.getBean(
+            "wife", Wife.class);
+    System.out.println(wife1);
+    System.out.println(wife2);
+    System.out.println(wife1==wife2); 
+}
+Bean生命周期管理方法
+
+@PostConstruct 注解用于声明Bean初始化方法，@PreDestroy 用于声明Bean销毁方法：
+
+@PostConstruct 和 @PreDestroy 来自javax.annotation包，使用之前需要导入他们：
+
+<dependency>
+    <groupId>javax.annotation</groupId>
+    <artifactId>javax.annotation-api</artifactId>
+    <version>1.2</version>
+</dependency>
+案例：
+
+@Component
+public class ExampleBean {
+
+    @PostConstruct
+    public void init(){
+        System.out.println("init");
+    }
+
+    @PreDestroy
+    public void destroy(){
+        System.out.println("destroy");
+    }
+}
+测试：
+
+@After
+public void gameover(){
+    //关闭Spring 容器
+    ctx.close();
+}
+
+@Test
+public void testExampleBean(){
+    //测试对象
+    ExampleBean bean=ctx.getBean(
+        "exampleBean", ExampleBean.class);
+    System.out.println(bean); 
+}
+说明：@After用在测试案例之后清理Spring容器，在清理Spring容器时候会触发 @PreDestroy 执行销毁方法。
+注解版本属性注入
+
+Spring支持3种注解，都可以实现属性注入:
+
+@Resource
+@Inject
+@Autoware
+这些注解支持两种注入方式：对象属性注入和Bean属性方法注入。其差别是Bean属性方法是调用Set方法完成，可以在注入期间插入业务逻辑，但同时使用也比较繁琐。
+
+
+案例：
+
+@Component
+public class Girl {
+    public String toString() {
+        return "静静";
+    }
+}
+
+@Component
+public class Boy {
+
+    /*
+     * 在运行期间，Spring会将Bean ID 为 girl
+     * 的Bean对象注入到 girlFriend 属性中
+     */
+    @Resource(name="girl")
+    private Girl girlFriend;
+
+    /*
+     * 默认情况下，Spring自动将Bean ID 
+     * 为girl的Bean注入到相同变量名的girl中
+     */
+    @Autowired
+    private Girl girl;
+
+    /*
+     * 将Bean ID为girl的Bean注入到girlFriend1
+     */
+    @Autowired
+    @Qualifier("girl")
+    private Girl girlFriend1;
+
+    /*
+     * 将Bean ID为girl的Bean注入到girlFriend2
+     */
+    @Inject
+    @Named("girl")
+    private Girl girlFriend2;
+
+
+    //Bean 属性注入：set方法注入
+    private Girl girlFriend3;
+    @Resource(name="girl")
+    public void setGirlFriend3(
+            Girl girlFriend3) {
+        this.girlFriend3 = girlFriend3;
+        System.out.println(
+            girlFriend3+"你是我的唯一");
+    }
+
+
+    public String toString() {
+        return "我想"+girlFriend + ","+
+                girl+","+
+                girlFriend1 + ","+
+                girlFriend2 + ","+
+                girlFriend3;
+    }
+}
+测试:
+
+@Test
+public void testBoy(){
+    Boy bob = ctx.getBean(
+        "boy", Boy.class);
+    System.out.println(bob); 
+}
+基于注解的表达式注入
+
+@Value 用于为属性注入值，与Spring表达式配合可以读取其他的Bean属性，注入到当前Ｂｅａｎ属性中：
+
+
+
+案例：
+
+@Component("dataBaseUtil")
+public class DBUtil {
+    /*
+     * 在运行期间Spring会读取Bean ID 为 db中的
+     * driver属性值，注入到变量dirverClass中
+     */
+    @Value("#{db.driver}")
+    private String dirverClass;
+
+    @Override
+    public String toString() {
+        return "DBUtil [dirverClass=" + dirverClass + "]";
+    }
+
+}
+测试：
+
+@Test
+public void testDataBaseUtil(){
+    /*
+     * 测试：基于注解@Value的表达式注入
+     * 同时使用不同包中的同名类时候，
+     * 必须是类的全名！！ 
+     */
+    spring.day03.demo.DBUtil bean=
+        ctx.getBean("dataBaseUtil",
+        spring.day03.demo.DBUtil.class);
+    System.out.println(bean); 
+}
+Spring MVC
+
+MVC 模式
+
+引子：什么是模式
+
+模式就是做事情的固定套路：
+
+模式==套路
+MVC：
+
+M-Model 模型
+模型（Model）的职责是负责业务逻辑。包含两层：业务数据和业务处理逻辑。比如实体类、DAO、Service都属于模型层。
+V-View 视图
+视图（View）的职责是负责显示界面和用户交互（收集用户信息）。属于视图的组件是不包含业务逻辑和控制逻辑的JSP。
+C-Controller 控制器
+控制器是模型层M和视图层V之间的桥梁，用于控制流程比如：在Servlet项目中的单一控制器ActionServlet。
+Spring WEB MVC
+
+MVC模式是常见的用户界面设计模式，Spring Web MVC是Spring 提供的Web界面MVC组件，利用这个组件可以简化WEB界面的开发。
+
+Spring MVC 的经典流程：
+
+
+
+Hello World
+
+步骤：
+
+创建项目 导入 Spring MVC 必须的组件
+配置主控制器 和 Spring配置文件
+添加子控制器
+添加显示视图
+1. 创建项目 导入 Spring MVC 必须的组件
+
+创建项目 略
+
+导入 Spring MVC 必须的组件：
+
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-webmvc</artifactId>
+    <version>3.2.8.RELEASE</version>
+</dependency>
+    <dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-aop</artifactId>
+    <version>3.2.8.RELEASE</version>
+</dependency>
+<dependency>
+    <groupId>junit</groupId>
+    <artifactId>junit</artifactId>
+    <version>4.12</version>
+</dependency>
+<dependency>
+    <groupId>javax.inject</groupId>
+    <artifactId>javax.inject</artifactId>
+    <version>1.0-PFD-1</version>
+</dependency>
+<dependency>
+    <groupId>javax.annotation</groupId>
+    <artifactId>javax.annotation-api</artifactId>
+    <version>1.2</version>
+</dependency>
+2. 配置主控制器 和 Spring配置文件
+
+更改web.xml:
+
+<!-- 配置Spring MVC的主控制器 -->
+<servlet>
+    <servlet-name>springmvc</servlet-name>
+    <servlet-class>
+        org.springframework.web.servlet.DispatcherServlet
+    </servlet-class>
+    <init-param>
+        <param-name>contextConfigLocation</param-name>
+        <param-value>classpath:spring-mvc.xml</param-value>
+    </init-param>
+    <load-on-startup>1</load-on-startup>
+</servlet>
+<servlet-mapping>
+    <servlet-name>springmvc</servlet-name>
+    <url-pattern>*.form</url-pattern>
+</servlet-mapping>
+添加Spring配置文件 spring-mvc.xml：
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context" 
+    xmlns:jdbc="http://www.springframework.org/schema/jdbc"  
+    xmlns:jee="http://www.springframework.org/schema/jee" 
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xmlns:aop="http://www.springframework.org/schema/aop" 
+    xmlns:mvc="http://www.springframework.org/schema/mvc"
+    xmlns:util="http://www.springframework.org/schema/util"
+    xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.2.xsd
+        http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.2.xsd
+        http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee-3.2.xsd
+        http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.2.xsd
+        http://www.springframework.org/schema/data/jpa http://www.springframework.org/schema/data/jpa/spring-jpa-1.3.xsd
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.2.xsd
+        http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd
+        http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.2.xsd">
+
+</beans>  
+部署到 Tomcat 启动测试...
+
+3. 添加子控制器
+
+开发控制器类：
+
+public class HelloController 
+    implements Controller{
+
+    public ModelAndView handleRequest(
+        HttpServletRequest req, 
+        HttpServletResponse res) 
+            throws Exception {
+
+        System.out.println("Hello World!");
+        return null;
+    }
+}
+在spring-web.xml 中配置：
+
+<bean   
+    class="org.springframework.web.servlet.handler.SimpleUrlHandlerMapping">
+    <!-- setMappings(Porpertis p) -->
+    <property name="mappings">
+        <props>
+            <!--   WEB URL          Bean ID  -->
+            <prop key="/hello.form">helloBean</prop>
+        </props>
+    </property>
+</bean>
+<bean id="helloBean"
+    class="day01.HelloController">
+</bean>
+启动浏览器测试：
+
+http://localhost:8080/springmvc_day01/hello.form
+
+控制台显示：Hello World
+4. 添加显示视图
+
+重构控制器：
+
+public class HelloController 
+    implements Controller{
+
+    public ModelAndView handleRequest(
+        HttpServletRequest req, 
+        HttpServletResponse res) 
+            throws Exception {
+
+        System.out.println("Hello World!");
+        //view ：一个JSP页面的名,如: msg.jsp
+        // ${message} -> Hello World
+        String view="msg";
+        //model 表示需要在页面上显示数据信息
+        Map<String, Object> model=
+            new HashMap<String, Object>();
+        model.put("message", "Hello World!");
+        ModelAndView mv=new ModelAndView(
+            view, model);
+        return mv;
+    }
+}
+添加返回值 ModelAndView 对象。
+创建视图 /WEB-INF/msg.jsp:
+
+<%@ page language="java" 
+    contentType="text/html; charset=UTF-8"
+   pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Spring MVC</title>
+</head>
+<body>
+    <h1>${message}</h1>
+</body>
+</html>
+配置 spring-mvc.xml：
+
+<bean 
+    class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+    <property name="prefix" 
+        value="/WEB-INF/"/>
+    <property name="suffix"
+        value=".jsp"/>  
+</bean>
+测试：
+
+请求：
+http://localhost:8080/springmvc_day01/hello.form
+
+结果：
+Hello World!
